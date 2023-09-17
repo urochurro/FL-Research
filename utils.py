@@ -43,9 +43,9 @@ def set_initial_params(model: LogisticRegression):
     But server asks for initial parameters from clients at launch. Refer to
     sklearn.linear_model.LogisticRegression documentation for more information.
     """
-    n_classes = 10  # MNIST has 10 classes
-    n_features = 784  # Number of features in dataset
-    model.classes_ = np.array([i for i in range(10)])
+    n_classes = 9
+    n_features = 38 
+    model.classes_ = np.array([i for i in range(n_classes)])
 
     model.coef_ = np.zeros((n_classes, n_features))
     if model.fit_intercept:
@@ -168,6 +168,6 @@ def preprocess(df_train):
 
 
     """**Splitting data into Training and Splitting**"""
-
+    df_train.drop("Genetic Disorder",axis=1,inplace=True)
     X,y = df_train.loc[:,df_train.columns != 'Disorder Subclass'], df_train.loc[:,'Disorder Subclass']
     return X, y

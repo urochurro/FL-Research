@@ -17,16 +17,13 @@ def fit_round(server_round: int) -> Dict:
 def get_evaluate_fn(model: LogisticRegression):
     """Return an evaluation function for server-side evaluation."""
 
-    print(X_test)
     def evaluate(
         server_round: int, parameters: NDArrays, config: Dict[str, Scalar]
     ) -> Optional[tuple[float, Dict[str, Scalar]]]:
         utils.set_model_params(model, parameters)
         proba = model.predict_proba(X_test)
-        print(proba)
         loss = log_loss(y_test, proba)
-        print(loss)
-        accuracy = model.score(X_test.values, y_test.values)
+        accuracy = model.score(X_test, y_test)
         return loss, {"accuracy": accuracy}
 
     return evaluate
@@ -40,4 +37,4 @@ if __name__ == "__main__":
         evaluate_fn=get_evaluate_fn(model),
         on_fit_config_fn=fit_round,
     )
-    fl.server.start_server(server_address="localhost:8080", strategy=strategy, config=fl.server.ServerConfig(num_rounds=3))
+    fl.server.start_server(server_address="localhost:3000", strategy=strategy, config=fl.server.ServerConfig(num_rounds=50))

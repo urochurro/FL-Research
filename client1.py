@@ -15,11 +15,11 @@ warnings.filterwarnings("ignore")
 if __name__ == "__main__":
     df_train=pd.read_csv("train_split0.csv",encoding='utf-8')
     X, y = utils.preprocess(df_train)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.8, random_state = 0)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 42)
 
     model = LogisticRegression(
         penalty="l2",
-        max_iter=1,  # local epoch
+        max_iter=100,  # local epoch
         warm_start=True,  # prevent refreshing weights when fitting
     )
 
@@ -43,4 +43,4 @@ if __name__ == "__main__":
             accuracy = model.score(X_test, y_test)
             return loss, len(X_test), {"accuracy": accuracy}
         
-    fl.client.start_numpy_client(server_address="localhost:8080", client=HospitalClient())
+    fl.client.start_numpy_client(server_address="localhost:3000", client=HospitalClient())
