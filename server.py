@@ -1,40 +1,57 @@
 import flwr as fl
 import utils
 import pandas as pd
-from flwr.common import NDArrays, Scalar
-from sklearn.metrics import log_loss
-from sklearn.linear_model import LogisticRegression
-from typing import Dict, Optional
+import keras
+import tensorflow as tf
 
-df = pd.read_csv("train_split2.csv")
-X_test, y_test = utils.preprocess(df)
+# df = pd.read_csv("train_split2.csv")
+# # X_test, y_test = utils.preprocess(df)
+# X_train, X_test, y_train, y_test = utils.preprocess(df)
+# X_test = X_train + X_test
+# y_test = y_train + y_test
 
-def fit_round(server_round: int) -> Dict:
-    """Send round number to client."""
-    return {"server_round": server_round}
+from flwr.common import NDArrays, Scalar, EvaluateRes, FitRes
 
+from typing import Dict, Optional, Tuple, Union, List
+from flwr.server.client_proxy import ClientProxy
 
-def get_evaluate_fn(model: LogisticRegression):
-    """Return an evaluation function for server-side evaluation."""
+loaded_model = tf.keras.models.load_model("initialised_model.h5")
+# Get model weights as a list of NumPy ndarray's
+weights = loaded_model.get_weights()
 
-    def evaluate(
-        server_round: int, parameters: NDArrays, config: Dict[str, Scalar]
-    ) -> Optional[tuple[float, Dict[str, Scalar]]]:
-        utils.set_model_params(model, parameters)
-        proba = model.predict_proba(X_test)
-        loss = log_loss(y_test, proba)
-        accuracy = model.score(X_test, y_test)
-        return loss, {"accuracy": accuracy}
+# Serialize ndarrays to `Parameters`
+parameters = fl.common.ndarrays_to_parameters(weights)
 
-    return evaluate
+class AggregateCustomMetricStrategy(fl.server.strategy.FedAvg):
+    def aggregate_evaluate(
+        self,
+        server_round: int,
+        results: List[Tuple[ClientProxy, EvaluateRes]],
+        failures: List[Union[Tuple[ClientProxy, FitRes], BaseException]],
+    ) -> Tuple[Optional[float], Dict[str, Scalar]]:
+        """Aggregate evaluation accuracy using weighted average."""
 
-# Start Flower server for five rounds of federated learning
-if __name__ == "__main__":
-    model = LogisticRegression()
-    utils.set_initial_params(model)
-    strategy = fl.server.strategy.FedAvg(
-        min_available_clients=2,
-        evaluate_fn=get_evaluate_fn(model),
-        on_fit_config_fn=fit_round,
-    )
-    fl.server.start_server(server_address="localhost:3000", strategy=strategy, config=fl.server.ServerConfig(num_rounds=50))
+        if not results:
+            return None, {}
+
+        # Call aggregate_evaluate from base class (FedAvg) to aggregate loss and metrics
+        aggregated_loss, aggregated_metrics = super().aggregate_evaluate(server_round, results, failures)
+
+        # Weigh accuracy of each client by number of examples used
+        accuracies = [r.metrics["accuracy"] * r.num_examples for _, r in results]
+        examples = [r.num_examples for _, r in results]
+
+        # Aggregate and print custom metric
+        aggregated_accuracy = sum(accuracies) / sum(examples)
+        print(f"Round {server_round} accuracy aggregated from client results: {aggregated_accuracy}")
+
+        # Return aggregated loss and metrics (i.e., aggregated accuracy)
+        return aggregated_loss, {"accuracy": aggregated_accuracy}
+    
+strategy = AggregateCustomMetricStrategy(
+    # (same arguments as FedAvg here)
+    min_available_clients=2,
+    initial_parameters=parameters,
+)
+# Start Flower server for four rounds of federated learning
+fl.server.start_server(server_address="localhost:3000", strategy=strategy, config=fl.server.ServerConfig(num_rounds=5))

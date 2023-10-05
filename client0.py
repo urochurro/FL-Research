@@ -1,4 +1,3 @@
-
 import warnings
 import flwr as fl
 import pandas as pd
@@ -9,16 +8,14 @@ import os
 import flwr as fl
 import tensorflow as tf
 import keras
-from sklearn.metrics import accuracy_score
 import numpy as np
-
-
+from sklearn.metrics import accuracy_score
 import utils
 
 import warnings
 warnings.filterwarnings("ignore")
 if __name__ == "__main__":
-    df_train=pd.read_csv("train_split1.csv",encoding='utf-8')
+    df_train=pd.read_csv("train_split0.csv",encoding='utf-8')
     # X, y = utils.preprocess(df_train)
     x_subclass, y_subclass = utils.preprocess(df_train)
     X_train, X_test, y_train, y_test = train_test_split(x_subclass, y_subclass, test_size=0.1)
@@ -48,6 +45,11 @@ if __name__ == "__main__":
             model3.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, validation_split=0.1, shuffle=True)
             return model3.get_weights(), len(X_train), {}
 
+        # def evaluate(self, parameters, config):
+        #     model3.set_weights(parameters)
+        #     loss, accuracy, _, _ = model3.evaluate(X_test, y_test)
+        #     print(f"accuracy of test: {accuracy} ")
+        #     return loss, len(X_test), {"accuracy": accuracy}
         def evaluate(self, parameters, config):
             model3.set_weights(parameters)
             y = model3.predict(X_test)
